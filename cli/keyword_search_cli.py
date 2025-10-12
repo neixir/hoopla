@@ -37,10 +37,13 @@ def main() -> None:
     clean_query = clean_string(args.query)
     tokenized_query = tokenize_string(clean_query)
     tokenized_query = remove_stopwords(stopwords_list, tokenized_query)
+    print (f"Tokenized query: {tokenized_query}\n")
     
     for movie in movies:
         tokenized_title = tokenize_string(clean_string(movie["title"]))
         tokenized_title = remove_stopwords(stopwords_list, tokenized_title)
+        # print (f"Tokenized title: {tokenized_title}")
+
         token_exists = find_one_token(tokenized_query, tokenized_title)
         if token_exists:
             movie_list.append(movie["title"])
@@ -62,9 +65,15 @@ def tokenize_string(s) -> list[str]:
 
 
 def find_one_token(query, title) -> bool:
-    for token in query:
-        if token in title:
-            return True
+    for query_token in query:
+        # Full word match
+        # if token in title:
+        #     return True
+        
+        # Partial match
+        for title_token in title:
+            if query_token in title_token:
+                return True
     return False
 
 def remove_stopwords(words, query) -> list[str]:
