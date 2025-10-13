@@ -2,6 +2,7 @@
 
 import argparse, json
 from tokenizer import Tokenizer
+from inverted_index import InvertedIndex
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -10,46 +11,57 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
 
+    build_parser = subparsers.add_parser("build", help="Build index")
+    #build_parser.add_argument("query", type=str, help="Search query")
+
     args = parser.parse_args()
 
-    match args.command:
-        case "search":
-            print(f"Searching for: {args.query}")
-        case "build":
-            # It should build the inverted index and save it to disk.
-            # After doing so, it should print a message containing the first ID of the document
-            # for the token 'merida' (which should be document 4651, "Brave").
-            pass
-
-        case _:
-            parser.print_help()
-
-    # CH1 L04-L05
-    # https://www.boot.dev/lessons/c836a818-eb0b-4d65-94f5-d8fba46db0e1
+    # Obtenim les pelicules
     movies = {}
-    movie_list = []
     with open("data/movies.json", "r") as f:
         contents = json.load(f)
         movies = contents["movies"]
 
+    # Creem el 'tokenizer'
     tokenizer = Tokenizer("data/stopwords.txt")
-    tokenized_query = tokenizer.tokenize_text(args.query)
 
-    print (f"Tokenized query: {tokenized_query}\n")
-    
-    for movie in movies:
-        tokenized_title = tokenizer.tokenize_text(movie["title"])
-        # print (f"Tokenized title: {tokenized_title}")
+    match args.command:
+        case "search":
+            print(f"Searching for: {args.query}")
+            tokenized_query = tokenizer.tokenize_text(args.query)
 
-        token_exists = find_one_token(tokenized_query, tokenized_title)
-        if token_exists:
-            movie_list.append(movie["title"])
+            print (f"Tokenized query: {tokenized_query}\n")
+            
+            movie_list = []
+            for movie in movies:
+                tokenized_title = tokenizer.tokenize_text(movie["title"])
+                # print (f"Tokenized title: {tokenized_title}")
 
-    # Sort movie_list by movie ID
-    movie_list.sort(key=lambda title: next(movie["id"] for movie in movies if movie["title"] == title))
+                token_exists = find_one_token(tokenized_query, tokenized_title)
+                if token_exists:
+                    movie_list.append(movie["title"])
 
-    for title in movie_list[:5]:    
-        print(title)
+            # Sort movie_list by movie ID
+            movie_list.sort(key=lambda title: next(movie["id"] for movie in movies if movie["title"] == title))
+
+            for title in movie_list[:5]:    
+                print(title)
+        
+        case "build":
+            # It should build the inverted index and save it to disk.
+            # After doing so, it should print a message containing the first ID of the document
+            # for the token 'merida' (which should be document 4651, "Brave").
+            ii = InvertedIndex()
+            ii.build(movies)
+            ii.save()
+            docs = ii.get_documents('merida')
+            print(f"First document for token 'merida' = {docs[0]}") 
+
+        case _:
+            parser.print_help()
+
+
+
 
 
 def find_one_token(query, title) -> bool:
