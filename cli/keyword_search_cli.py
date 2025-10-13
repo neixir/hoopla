@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import argparse, json
-import string
+import argparse, json, string
+from nltk.stem import PorterStemmer
 
 
 def main() -> None:
@@ -29,19 +29,18 @@ def main() -> None:
         
         
     # Stopwords
+    stopwords_list = []
     with open("data/stopwords.txt", "r") as f:
         stopwords = f.read()
         stopwords_list = stopwords.splitlines()     
         
     
-    clean_query = clean_string(args.query)
-    tokenized_query = tokenize_string(clean_query)
-    tokenized_query = remove_stopwords(stopwords_list, tokenized_query)
+    tokenized_query = tokenize_string(args.query, stopwords_list)
+
     print (f"Tokenized query: {tokenized_query}\n")
     
     for movie in movies:
-        tokenized_title = tokenize_string(clean_string(movie["title"]))
-        tokenized_title = remove_stopwords(stopwords_list, tokenized_title)
+        tokenized_title = tokenize_string(movie["title"], stopwords_list)
         # print (f"Tokenized title: {tokenized_title}")
 
         token_exists = find_one_token(tokenized_query, tokenized_title)
@@ -59,31 +58,52 @@ def clean_string(s) -> str:
     return s.lower().translate(str.maketrans('', '', string.punctuation))
 
 
-def tokenize_string(s) -> list[str]:
+def separate_words(s) -> list[str]:
     s = " ".join(s.split())
     return s.split(" ")
 
 
-def find_one_token(query, title) -> bool:
-    for query_token in query:
-        # Full word match
-        # if token in title:
-        #     return True
-        
-        # Partial match
-        for title_token in title:
-            if query_token in title_token:
-                return True
-    return False
-
-def remove_stopwords(words, query) -> list[str]:
+def remove_stopwords(query, words) -> list[str]:
     removed = []
     for token in query:
         if token not in words:
             removed.append(token)
     
     return removed
-            
+
+
+def tokenize_string(text, stopwords) -> list[str]:
+    tokens = []
+
+    # Lower case and remove punctuation
+    s = clean_string(text)
+
+    # Convert string to list of words
+    words = separate_words(s)
+    
+    # Remove stopwords
+    words = remove_stopwords(words, stopwords)
+
+    # Stemming
+    stemmer = PorterStemmer()
+    for word in words:
+        tokens.append(stemmer.stem(word, False))
+
+    return tokens
+
+
+def find_one_token(query, title) -> bool:
+    for query_token in query:
+        # Full word match
+        if query_token in title:
+            return True
+        
+        # Partial match
+        # for title_token in title:
+        #     if query_token in title_token:
+        #         return True
+    return False
+
 
 if __name__ == "__main__":
     main()
