@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-import argparse, json, string
-from nltk.stem import PorterStemmer
-
+import argparse, json
+from tokenizer import Tokenizer
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -16,6 +15,12 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
+        case "build":
+            # It should build the inverted index and save it to disk.
+            # After doing so, it should print a message containing the first ID of the document
+            # for the token 'merida' (which should be document 4651, "Brave").
+            pass
+
         case _:
             parser.print_help()
 
@@ -26,21 +31,14 @@ def main() -> None:
     with open("data/movies.json", "r") as f:
         contents = json.load(f)
         movies = contents["movies"]
-        
-        
-    # Stopwords
-    stopwords_list = []
-    with open("data/stopwords.txt", "r") as f:
-        stopwords = f.read()
-        stopwords_list = stopwords.splitlines()     
-        
-    
-    tokenized_query = tokenize_string(args.query, stopwords_list)
+
+    tokenizer = Tokenizer("data/stopwords.txt")
+    tokenized_query = tokenizer.tokenize_text(args.query)
 
     print (f"Tokenized query: {tokenized_query}\n")
     
     for movie in movies:
-        tokenized_title = tokenize_string(movie["title"], stopwords_list)
+        tokenized_title = tokenizer.tokenize_text(movie["title"])
         # print (f"Tokenized title: {tokenized_title}")
 
         token_exists = find_one_token(tokenized_query, tokenized_title)
@@ -52,44 +50,6 @@ def main() -> None:
 
     for title in movie_list[:5]:    
         print(title)
-
-
-def clean_string(s) -> str:
-    return s.lower().translate(str.maketrans('', '', string.punctuation))
-
-
-def separate_words(s) -> list[str]:
-    s = " ".join(s.split())
-    return s.split(" ")
-
-
-def remove_stopwords(query, words) -> list[str]:
-    removed = []
-    for token in query:
-        if token not in words:
-            removed.append(token)
-    
-    return removed
-
-
-def tokenize_string(text, stopwords) -> list[str]:
-    tokens = []
-
-    # Lower case and remove punctuation
-    s = clean_string(text)
-
-    # Convert string to list of words
-    words = separate_words(s)
-    
-    # Remove stopwords
-    words = remove_stopwords(words, stopwords)
-
-    # Stemming
-    stemmer = PorterStemmer()
-    for word in words:
-        tokens.append(stemmer.stem(word, False))
-
-    return tokens
 
 
 def find_one_token(query, title) -> bool:
