@@ -8,6 +8,7 @@ from inverted_index import InvertedIndex
 MAX_RESULTS = 5
 
 # Only enable debug mode if an environment variable is set
+# DEspres Ctrl+Shift+D i F5 per inicar debug dins de VS Code
 if os.getenv("DEBUGPY", "0") == "1":
     import debugpy
     debugpy.listen(("0.0.0.0", 5678))
@@ -23,8 +24,11 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
 
-    build_parser = subparsers.add_parser("build", help="Build index")
-    #build_parser.add_argument("query", type=str, help="Search query")
+    subparsers.add_parser("build", help="Build index")
+
+    tf_parser = subparsers.add_parser("tf", help="Prints the term frequency of a term")
+    tf_parser.add_argument("doc_id", type=str, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term")
 
     args = parser.parse_args()
 
@@ -72,8 +76,18 @@ def main() -> None:
             # for the token 'merida' (which should be document 4651, "Brave").
             ii.build(movies)
             ii.save()
-            # docs = ii.get_documents('merida')
-            # print(f"First document for token 'merida' = {docs[0]}") 
+
+        case "tf":
+            tf = 0
+            try:
+                ii.load()
+                tf = ii.get_tf(args.doc_id, args.term)
+            except Exception as ex:
+                print(ex)
+                sys.exit(-1)          
+
+            print(f"TF: {tf}")
+
 
         case _:
             parser.print_help()

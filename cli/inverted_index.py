@@ -1,16 +1,19 @@
 import os, pickle
 from pathlib import Path
+from collections import Counter
 from tokenizer import Tokenizer
 
-# Use the file path/name cache/index.pkl for the index.
-# Use the file path/name cache/docmap.pkl for the docmap.
 CACHE_DIRECTORY = "cache"
 INDEX_FILENAME = "index.pkl"
 DOCMAP_FILENAME = "docmap.pkl"
+TF_FILENAME = "term_frequencies.pkl"
 
 class InvertedIndex:
-    index = {}      # a dictionary mapping tokens (strings) to sets of document IDs (integers).
-    docmap = {}     # a dictionary mapping document IDs to their full document objects.
+    index = {}      # dictionary mapping tokens (strings) to sets of document IDs (integers).
+    docmap = {}     # dictionary mapping document IDs to their full document objects.
+    term_frequencies = {} # dictionary of document IDs to Counter objects
+    
+    # counter = Counter()
     tokenizer = Tokenizer("data/stopwords.txt")
 
     # Tokenize the input text, then add each token to the index with the document ID.
@@ -21,7 +24,12 @@ class InvertedIndex:
                 self.index[token].add(doc_id)
             else:
                 self.index[token] = {doc_id}
-            # print(token, self.index[token])
+
+            # update the term frequencies for each token in the document.
+            # For each token, increment its count in the Counter for that document ID.
+            if doc_id not in self.term_frequencies:
+                self.term_frequencies[doc_id] = Counter()
+            self.term_frequencies[doc_id][token] += 1
 
 
     # It should get the set of documents for a given token, and return them as a list,
@@ -39,9 +47,10 @@ class InvertedIndex:
         q = len(movies)
         for m in movies:
             print(f"* Adding [{q}]", m["title"])
+            doc_id = str(m["id"])
             text = f"{m['title']} {m['description']}"
-            self.__add_document(m["id"], text)
-            self.docmap[m["id"]] = m
+            self.__add_document(doc_id, text)
+            self.docmap[m["id"]] = m    # potser tb doc_id?
             q -= 1
 
 
@@ -59,6 +68,10 @@ class InvertedIndex:
         with open(docmap_file_path, "wb") as f:
             pickle.dump(self.docmap, f)
 
+        tf_file_path = CACHE_DIRECTORY + "/" + TF_FILENAME
+        with open(tf_file_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
+
 
     def load(self):
         # Load index
@@ -68,6 +81,18 @@ class InvertedIndex:
         # Load docmap
         docmap_file_path = CACHE_DIRECTORY + "/" + DOCMAP_FILENAME
         self.docmap = self.__load_or_raise(docmap_file_path)
+
+        # Load term_frequencies
+        tf_file_path = CACHE_DIRECTORY + "/" + TF_FILENAME
+        self.term_frequencies = self.__load_or_raise(tf_file_path)
+
+
+    def get_tf(self, doc_id: str, term: str) -> int:
+        tokenized = self.tokenizer.tokenize_text(term)
+        if len(tokenized) > 1:
+            raise Exception(f"Too many tokens in \"{term}\" ({len(tokenized)})")
+        
+        return self.term_frequencies.get(doc_id, Counter()).get(tokenized[0], 0)
 
 
     def __load_or_raise(self, filename):
