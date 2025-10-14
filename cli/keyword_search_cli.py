@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 
-import argparse, json
+import os
+import argparse, json, sys
 from tokenizer import Tokenizer
 from inverted_index import InvertedIndex
 
+MAX_RESULTS = 5
+
+# Only enable debug mode if an environment variable is set
+if os.getenv("DEBUGPY", "0") == "1":
+    import debugpy
+    debugpy.listen(("0.0.0.0", 5678))
+    print("🔍 Waiting for VS Code debugger to attach on port 5678...")
+    debugpy.wait_for_client()
+    print("✅ Debugger attached.")
+
 def main() -> None:
+
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -25,56 +37,46 @@ def main() -> None:
     # Creem el 'tokenizer'
     tokenizer = Tokenizer("data/stopwords.txt")
 
+    ii = InvertedIndex()
+
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
+
             tokenized_query = tokenizer.tokenize_text(args.query)
+            print (f"Tokenized query: {tokenized_query}")
 
-            print (f"Tokenized query: {tokenized_query}\n")
+            try:
+                ii.load()
+            except Exception as ex:
+                print(ex)
+                sys.exit(-1)          
             
-            movie_list = []
-            for movie in movies:
-                tokenized_title = tokenizer.tokenize_text(movie["title"])
-                # print (f"Tokenized title: {tokenized_title}")
+            doc_list = []
+            for query_token in tokenized_query:
+                docs = ii.get_documents(query_token)
+                max = MAX_RESULTS - len(doc_list)
+                if (len(doc_list) < MAX_RESULTS):   # max > 0
+                    doc_list.extend(docs[:max])
+                else:
+                    break
 
-                token_exists = find_one_token(tokenized_query, tokenized_title)
-                if token_exists:
-                    movie_list.append(movie["title"])
+            for doc in doc_list:
+                id = ii.docmap[doc]["id"]
+                title = ii.docmap[doc]["title"]                
+                print(f"{id:4} {title}")
 
-            # Sort movie_list by movie ID
-            movie_list.sort(key=lambda title: next(movie["id"] for movie in movies if movie["title"] == title))
-
-            for title in movie_list[:5]:    
-                print(title)
-        
         case "build":
             # It should build the inverted index and save it to disk.
             # After doing so, it should print a message containing the first ID of the document
             # for the token 'merida' (which should be document 4651, "Brave").
-            ii = InvertedIndex()
             ii.build(movies)
             ii.save()
-            docs = ii.get_documents('merida')
-            print(f"First document for token 'merida' = {docs[0]}") 
+            # docs = ii.get_documents('merida')
+            # print(f"First document for token 'merida' = {docs[0]}") 
 
         case _:
             parser.print_help()
-
-
-
-
-
-def find_one_token(query, title) -> bool:
-    for query_token in query:
-        # Full word match
-        if query_token in title:
-            return True
-        
-        # Partial match
-        # for title_token in title:
-        #     if query_token in title_token:
-        #         return True
-    return False
 
 
 if __name__ == "__main__":
