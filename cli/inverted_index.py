@@ -1,4 +1,4 @@
-import os, pickle
+import math, os, pickle
 from pathlib import Path
 from collections import Counter
 from tokenizer import Tokenizer
@@ -90,9 +90,24 @@ class InvertedIndex:
     def get_tf(self, doc_id: str, term: str) -> int:
         tokenized = self.tokenizer.tokenize_text(term)
         if len(tokenized) > 1:
-            raise Exception(f"Too many tokens in \"{term}\" ({len(tokenized)})")
+            raise Exception(f"Too many tokens in \"{term}\" ({len(tokenized)}). Only one word permitted!")
         
         return self.term_frequencies.get(doc_id, Counter()).get(tokenized[0], 0)
+
+
+    def calculate_idf(self, term):
+        tokenized = self.tokenizer.tokenize_text(term)
+        if len(tokenized) > 1:
+            raise Exception(f"Too many tokens in \"{term}\" ({len(tokenized)}). Only one word permitted!")
+        
+        word = tokenized[0]
+
+        if word not in self.index:
+            term_doc_count = 0
+        else:
+            term_doc_count = len(self.index[word])
+        
+        return math.log((len(self.docmap) + 1) / (term_doc_count + 1))
 
 
     def __load_or_raise(self, filename):

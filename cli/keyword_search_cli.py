@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import argparse, json, sys
+import argparse, json, math, sys
 from tokenizer import Tokenizer
 from inverted_index import InvertedIndex
 
@@ -30,6 +30,9 @@ def main() -> None:
     tf_parser.add_argument("doc_id", type=str, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Term")
 
+    idf_parser = subparsers.add_parser("idf", help="Inverse Document Frequency")
+    idf_parser.add_argument("term", type=str, help="Term")
+    
     args = parser.parse_args()
 
     # Obtenim les pelicules
@@ -72,10 +75,9 @@ def main() -> None:
 
         case "build":
             # It should build the inverted index and save it to disk.
-            # After doing so, it should print a message containing the first ID of the document
-            # for the token 'merida' (which should be document 4651, "Brave").
             ii.build(movies)
             ii.save()
+            print(f"docmap: {len(ii.docmap)}")
 
         case "tf":
             tf = 0
@@ -88,6 +90,14 @@ def main() -> None:
 
             print(f"TF: {tf}")
 
+        case "idf":
+            try:
+                ii.load()
+                idf = ii.calculate_idf(args.term)
+                print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+            except Exception as ex:
+                print(ex)
+                sys.exit(-1)          
 
         case _:
             parser.print_help()
